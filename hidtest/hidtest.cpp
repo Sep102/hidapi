@@ -46,6 +46,14 @@ int main(int argc, char* argv[])
 	if (hid_init())
 		return -1;
 
+	for (int i = 0; i < 10; ++i)
+	{
+	  hid_process_pending_events();
+	  sleep (1);
+	}
+
+	return 0;
+
 	devs = hid_enumerate(0x0, 0x0);
 	cur_dev = devs;	
 	while (cur_dev) {
@@ -69,7 +77,7 @@ int main(int argc, char* argv[])
 	// Open the device using the VID, PID,
 	// and optionally the Serial number.
 	////handle = hid_open(0x4d8, 0x3f, L"12345");
-	handle = hid_open(0x4d8, 0x3f, NULL);
+	handle = hid_open(0x11ac, 0x6565, NULL);
 	if (!handle) {
 		printf("unable to open device\n");
  		return 1;
@@ -111,77 +119,25 @@ int main(int argc, char* argv[])
 	// data here, but execution should not block.
 	res = hid_read(handle, buf, 17);
 
-	// Send a Feature Report to the device
-	buf[0] = 0x2;
-	buf[1] = 0xa0;
-	buf[2] = 0x0a;
-	buf[3] = 0x00;
-	buf[4] = 0x00;
-	res = hid_send_feature_report(handle, buf, 17);
-	if (res < 0) {
-		printf("Unable to send a feature report.\n");
-	}
+        buf[0] = 0x09; buf[1] = 0x02; buf[2] = 0xDD; buf[3] = 0x08;
+        res = hid_send_feature_report(handle, buf, 64);
+        if (res == -1)
+          puts("Could not write to device");
 
-	memset(buf,0,sizeof(buf));
-
-	// Read a Feature Report from the device
-	buf[0] = 0x2;
-	res = hid_get_feature_report(handle, buf, sizeof(buf));
-	if (res < 0) {
-		printf("Unable to get a feature report.\n");
-		printf("%ls", hid_error(handle));
-	}
-	else {
-		// Print out the returned buffer.
-		printf("Feature Report\n   ");
-		for (i = 0; i < res; i++)
-			printf("%02hhx ", buf[i]);
-		printf("\n");
-	}
-
-	memset(buf,0,sizeof(buf));
-
-	// Toggle LED (cmd 0x80). The first byte is the report number (0x1).
-	buf[0] = 0x1;
-	buf[1] = 0x80;
-	res = hid_write(handle, buf, 17);
-	if (res < 0) {
-		printf("Unable to write()\n");
-		printf("Error: %ls\n", hid_error(handle));
-	}
-	
-
-	// Request state (cmd 0x81). The first byte is the report number (0x1).
-	buf[0] = 0x1;
-	buf[1] = 0x81;
-	hid_write(handle, buf, 17);
-	if (res < 0)
-		printf("Unable to write() (2)\n");
-
-	// Read requested state. hid_read() has been set to be
-	// non-blocking by the call to hid_set_nonblocking() above.
-	// This loop demonstrates the non-blocking nature of hid_read().
-	res = 0;
-	while (res == 0) {
-		res = hid_read(handle, buf, sizeof(buf));
-		if (res == 0)
-			printf("waiting...\n");
-		if (res < 0)
-			printf("Unable to read()\n");
-		#ifdef WIN32
-		Sleep(500);
-		#else
-		usleep(500*1000);
-		#endif
-	}
-
-	printf("Data read:\n   ");
-	// Print out the returned buffer.
-	for (i = 0; i < res; i++)
-		printf("%02hhx ", buf[i]);
-	printf("\n");
+        res = hid_get_feature_report(handle, buf, 64);
+        if (res > 0)
+        {
+          printf("Result: ");
+          for (int i = 0; i < res; ++i)
+            printf("%x ", buf[i]);
+          puts("");
+        }
+        else
+          puts("Could not read from device");
 
 	hid_close(handle);
+
+	sleep (10);
 
 	/* Free static HIDAPI objects. */
 	hid_exit();

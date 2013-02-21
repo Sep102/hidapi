@@ -33,6 +33,12 @@
 
 #include "hidapi.h"
 
+static void hid_attach_callback(void *context, IOReturn result,
+                                       void *sender, IOHIDDeviceRef device);
+
+static void hid_removal_callback(void *context, IOReturn result,
+                                 void *sender, IOHIDDeviceRef device);
+
 /* Barrier implementation because Mac OSX doesn't have pthread_barrier.
    It also doesn't have clock_gettime(). So much for POSIX and SUSv2.
    This implementation came from Brent Priddy and was posted on
@@ -367,6 +373,8 @@ static int init_hid_manager(void)
 	if (hid_mgr) {
 		IOHIDManagerSetDeviceMatching(hid_mgr, NULL);
 		IOHIDManagerScheduleWithRunLoop(hid_mgr, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    IOHIDManagerRegisterDeviceMatchingCallback(hid_mgr, hid_attach_callback, NULL);
+    IOHIDManagerRegisterDeviceRemovalCallback(hid_mgr, hid_removal_callback, NULL);
 		return 0;
 	}
 
@@ -398,7 +406,7 @@ int HID_API_EXPORT hid_exit(void)
 	return 0;
 }
 
-static void process_pending_events(void) {
+void hid_process_pending_events(void) {
 	SInt32 res;
 	do {
 		res = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.001, FALSE);
@@ -417,7 +425,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 		return NULL;
 
 	/* give the IOHIDManager a chance to update itself */
-	process_pending_events();
+	hid_process_pending_events();
 
 	/* Get a list of the Devices */
 	CFSetRef device_set = IOHIDManagerCopyDevices(hid_mgr);
@@ -545,6 +553,26 @@ hid_device * HID_API_EXPORT hid_open(unsigned short vendor_id, unsigned short pr
 	hid_free_enumeration(devs);
 
 	return handle;
+}
+
+static void hid_attach_callback(void *context, IOReturn result,
+                                       void *sender, IOHIDDeviceRef device)
+{
+  char buf[256];
+
+  puts("Attach:");
+  make_path(device, buf, sizeof(buf));
+  puts(buf);
+}
+
+static void hid_removal_callback(void *context, IOReturn result,
+                                       void *sender, IOHIDDeviceRef device)
+{
+  char buf[256];
+
+  puts("Removal:");
+  make_path(device, buf, sizeof(buf));
+  puts(buf);
 }
 
 static void hid_device_removal_callback(void *context, IOReturn result,
@@ -693,7 +721,7 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path)
 		return NULL;
 
 	/* give the IOHIDManager a chance to update itself */
-	process_pending_events();
+	hid_process_pending_events();
 
 	CFSetRef device_set = IOHIDManagerCopyDevices(hid_mgr);
 

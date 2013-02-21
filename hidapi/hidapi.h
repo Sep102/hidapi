@@ -108,6 +108,8 @@ extern "C" {
 		*/
 		int HID_API_EXPORT HID_API_CALL hid_exit(void);
 
+    void hid_process_pending_events(void);
+
 		/** @brief Enumerate the HID Devices.
 
 			This function returns a linked list of all the HID devices
