@@ -46,6 +46,7 @@ int main(int argc, char* argv[])
 	if (hid_init())
 		return -1;
 
+#if 0
 	for (int i = 0; i < 10; ++i)
 	{
 	  hid_process_pending_events();
@@ -53,6 +54,7 @@ int main(int argc, char* argv[])
 	}
 
 	return 0;
+#endif
 
 	devs = hid_enumerate(0x0, 0x0);
 	cur_dev = devs;	
@@ -119,23 +121,37 @@ int main(int argc, char* argv[])
 	// data here, but execution should not block.
 	res = hid_read(handle, buf, 17);
 
-        buf[0] = 0x09; buf[1] = 0x02; buf[2] = 0xDD; buf[3] = 0x08;
-        res = hid_send_feature_report(handle, buf, 64);
-        if (res == -1)
-          puts("Could not write to device");
+  buf[0] = 0x09; buf[1] = 0x02; buf[2] = 0xDD; buf[3] = 0x08;
+  res = hid_send_feature_report(handle, buf, 64);
+  if (res == -1)
+  {
+    puts("Could not write to device");
+    wchar_t const *error = hid_error(handle);
+    if (NULL != error)
+      printf("%ls\n", error);
+  }
 
-        res = hid_get_feature_report(handle, buf, 64);
-        if (res > 0)
-        {
-          printf("Result: ");
-          for (int i = 0; i < res; ++i)
-            printf("%x ", buf[i]);
-          puts("");
-        }
-        else
-          puts("Could not read from device");
+  buf[0] = 0x02;
+  res = hid_get_feature_report(handle, buf, 64);
+  if (res > 0)
+  {
+    printf("Result: ");
+    for (int i = 0; i < res; ++i)
+      printf("%x ", buf[i]);
+    puts("");
+  }
+  else
+  {
+    if (res == -1)
+    {
+      puts("Could not read from device");
+      wchar_t const *error = hid_error(handle);
+      if (NULL != error)
+        printf("%ls\n", error);
+    }
+  }
 
-	hid_close(handle);
+  hid_close(handle);
 
 	sleep (10);
 

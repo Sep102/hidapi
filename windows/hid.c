@@ -51,6 +51,7 @@ extern "C" {
 	#define HID_OUT_CTL_CODE(id)  \
 		CTL_CODE(FILE_DEVICE_KEYBOARD, (id), METHOD_OUT_DIRECT, FILE_ANY_ACCESS)
 	#define IOCTL_HID_GET_FEATURE                   HID_OUT_CTL_CODE(100)
+	#define IOCTL_HID_GET_INPUT_REPORT              HID_OUT_CTL_CODE(104)
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -102,6 +103,8 @@ extern "C" {
 	typedef BOOLEAN (__stdcall *HidD_GetProductString_)(HANDLE handle, PVOID buffer, ULONG buffer_len);
 	typedef BOOLEAN (__stdcall *HidD_SetFeature_)(HANDLE handle, PVOID data, ULONG length);
 	typedef BOOLEAN (__stdcall *HidD_GetFeature_)(HANDLE handle, PVOID data, ULONG length);
+	typedef BOOLEAN (__stdcall *HidD_SetOutputReport_)(HANDLE handle, PVOID data, ULONG length);
+	typedef BOOLEAN (__stdcall *HidD_GetInputReport_)(HANDLE handle, PVOID data, ULONG length);
 	typedef BOOLEAN (__stdcall *HidD_GetIndexedString_)(HANDLE handle, ULONG string_index, PVOID buffer, ULONG buffer_len);
 	typedef BOOLEAN (__stdcall *HidD_GetPreparsedData_)(HANDLE handle, PHIDP_PREPARSED_DATA *preparsed_data);
 	typedef BOOLEAN (__stdcall *HidD_FreePreparsedData_)(PHIDP_PREPARSED_DATA preparsed_data);
@@ -113,6 +116,8 @@ extern "C" {
 	static HidD_GetProductString_ HidD_GetProductString;
 	static HidD_SetFeature_ HidD_SetFeature;
 	static HidD_GetFeature_ HidD_GetFeature;
+	static HidD_SetOutputReport_ HidD_SetOutputReport;
+	static HidD_GetInputReport_ HidD_GetInputReport;
 	static HidD_GetIndexedString_ HidD_GetIndexedString;
 	static HidD_GetPreparsedData_ HidD_GetPreparsedData;
 	static HidD_FreePreparsedData_ HidD_FreePreparsedData;
@@ -156,6 +161,7 @@ static void register_error(hid_device *device, const char *op)
 {
 	WCHAR *ptr, *msg;
 
+	printf("%d\n", GetLastError());
 	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_SYSTEM |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -194,6 +200,8 @@ static int lookup_functions()
 		RESOLVE(HidD_GetProductString);
 		RESOLVE(HidD_SetFeature);
 		RESOLVE(HidD_GetFeature);
+		RESOLVE(HidD_SetOutputReport);
+		RESOLVE(HidD_GetInputReport);
 		RESOLVE(HidD_GetIndexedString);
 		RESOLVE(HidD_GetPreparsedData);
 		RESOLVE(HidD_FreePreparsedData);
@@ -726,9 +734,9 @@ int HID_API_EXPORT HID_API_CALL hid_set_nonblocking(hid_device *dev, int nonbloc
 
 int HID_API_EXPORT HID_API_CALL hid_send_feature_report(hid_device *dev, const unsigned char *data, size_t length)
 {
-	BOOL res = HidD_SetFeature(dev->device_handle, (PVOID)data, length);
+	BOOL res = HidD_SetOutputReport(dev->device_handle, (PVOID)data, length);
 	if (!res) {
-		register_error(dev, "HidD_SetFeature");
+		register_error(dev, "HidD_SetOutputReport");
 		return -1;
 	}
 
@@ -740,12 +748,12 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 {
 	BOOL res;
 #if 0
-	res = HidD_GetFeature(dev->device_handle, data, length);
+	res = HidD_GetInputReport(dev->device_handle, data, length);
 	if (!res) {
-		register_error(dev, "HidD_GetFeature");
+		register_error(dev, "HidD_GetInputReport");
 		return -1;
 	}
-	return 0; /* HidD_GetFeature() doesn't give us an actual length, unfortunately */
+	return 0; /* HidD_GetInputReport() doesn't give us an actual length, unfortunately */
 #else
 	DWORD bytes_returned;
 
@@ -753,7 +761,7 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 	memset(&ol, 0, sizeof(ol));
 
 	res = DeviceIoControl(dev->device_handle,
-		IOCTL_HID_GET_FEATURE,
+		IOCTL_HID_GET_INPUT_REPORT,
 		data, length,
 		data, length,
 		&bytes_returned, &ol);
