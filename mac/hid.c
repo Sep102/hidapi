@@ -709,7 +709,7 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path)
 		len = make_path(os_dev, cbuf, sizeof(cbuf));
 		if (!strcmp(cbuf, path)) {
 			/* Matched Paths. Open this Device. */
-			IOReturn ret = IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeSeizeDevice);
+			IOReturn ret = IOHIDDeviceOpen(os_dev, kIOHIDOptionsTypeNone);
 			if (ret == kIOReturnSuccess) {
 				char str[32];
 
@@ -719,7 +719,8 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path)
 				dev->device_handle = os_dev;
 
 				/* Create the buffers for receiving data */
-				dev->max_input_report_len = (CFIndex) get_max_report_length(os_dev);
+				//dev->max_input_report_len = (CFIndex) get_max_report_length(os_dev);
+				dev->max_input_report_len = 80;
 				dev->input_report_buf = calloc(dev->max_input_report_len, sizeof(uint8_t));
 
 				/* Create the Run Loop Mode for this device.
